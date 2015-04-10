@@ -9,44 +9,12 @@ __author__ = 'orish_000'
  ** Optional maximum proximity (e.g. one shotef every 3 weeks)
 """
 import calendar
-WEEKDAYS = [calendar.SUNDAY, calendar.MONDAY, calendar.TUESDAY, calendar.WEDNESDAY, calendar.THURSDAY]
 from pprint import pprint
-from collections import namedtuple
-Day = namedtuple("Day", ["person", "score"])
-ConstraintViolation = namedtuple("ConstraintViolation", ["constraint", "level"])
+from consts import WEEKDAYS
+from day_factory import create_day_factory
 
-class DayGenerator(object):
-    SLIGHTLY_INCONVENIENT = 1
-    VERY_INCONVENIENT = 2
-    IMPOSSIBLE = 3
 
-    def __init__(self, people):
-        self.people = people
-        self.constraints = {}
 
-    def set_unavailable(self, person, level):
-        """
-        level: 1 - slightly inconvenient (free time)
-               2 - very inconvenient (family event / must move toranut)
-               3 - impossible (abroad)
-        """
-        constraint = lambda p: p != person
-        if level not in self.constraints:
-            self.constraints[level] = []
-
-        self.constraints[level].append(constraint)
-
-    def next_day(self):
-        for person in self.people:
-            constraint_violations = []
-            for level, constraint_list in self.constraints.iteritems():
-                for constraint in constraint_list:
-                    if not constraint(person):
-                        constraint_violations.append(ConstraintViolation(constraint=constraint, level=level))
-            yield Day(person=person, score=sum([violation.level for violation in constraint_violations]))
-
-    def get_all_possible_days(self):
-        return [x for x in self.next_day()]
 
 def choose(set):
     import random
@@ -72,15 +40,9 @@ def generate_concrete_week(week, perform_count):
     return concrete_week
 
 def generate_theoretical_week(people):
-    text_cal = calendar.TextCalendar()
-    text_cal.setfirstweekday(calendar.SUNDAY)
     # First constraint: Michal and Shaked don't do weekends.
-    week = {day_num: DayGenerator(people) for day_num in text_cal.iterweekdays()}
+    week = {day_num: create_day_factory(day_num, people)for day_num in WEEKDAYS}
     pprint(week)
-    week[calendar.SUNDAY].set_unavailable("Michal", DayGenerator.VERY_INCONVENIENT)
-    week[calendar.SUNDAY].set_unavailable("Shaked", DayGenerator.VERY_INCONVENIENT)
-    week[calendar.THURSDAY].set_unavailable("Michal", DayGenerator.IMPOSSIBLE)
-    week[calendar.THURSDAY].set_unavailable("Shaked", DayGenerator.IMPOSSIBLE)
 
     return week
 
