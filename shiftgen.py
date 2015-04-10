@@ -10,15 +10,17 @@ __author__ = 'orish_000'
 """
 import calendar
 WEEKDAYS = [calendar.SUNDAY, calendar.MONDAY, calendar.TUESDAY, calendar.WEDNESDAY, calendar.THURSDAY]
-SLIGHTLY_INCONVENIENT = 1
-VERY_INCONVENIENT = 2
-IMPOSSIBLE = 3
 from pprint import pprint
+from collections import namedtuple
+Day = namedtuple("Day", ["person", "score"])
+ConstraintViolation = namedtuple("ConstraintViolation", ["constraint", "level"])
 
+class DayGenerator(object):
+    SLIGHTLY_INCONVENIENT = 1
+    VERY_INCONVENIENT = 2
+    IMPOSSIBLE = 3
 
-class Day(object):
     def __init__(self, people):
-        self.score = 0
         self.people = people
         self.constraints = {}
 
@@ -34,26 +36,17 @@ class Day(object):
 
         self.constraints[level].append(constraint)
 
-    def generate_possible_outputs(self, ignore_level):
+    def next_day(self):
         for person in self.people:
-            can_perform = True
-            ignored_constraint_levels = range(ignore_level+1, 1, -1)
-            for current_level in ignored_constraint_levels:
-                for constraint in self.constraints[current_level]:
-                    can_perform = can_perform and constraint(person)
-            if can_perform:
-                yield person
+            constraint_violations = []
+            for level, constraint_list in self.constraints.iteritems():
+                for constraint in constraint_list:
+                    if not constraint(person):
+                        constraint_violations.append(ConstraintViolation(constraint=constraint, level=level))
+            yield Day(person=person, score=sum([violation.level for violation in constraint_violations]))
 
-    def get_all_possible_outputs(self, ignore_level):
-        return [x for x in self.generate_possible_outputs(ignore_level)]
-
-class ConcreteWeek(object):
-    def __init__(self):
-        self.days = {}
-
-    def select_day(self, day_num, day):
-        assert day_num not in self.days
-        self.days[day_num] = day
+    def get_all_possible_days(self):
+        return [x for x in self.next_day()]
 
 def choose(set):
     import random
@@ -64,17 +57,17 @@ def generate_concrete_week(week, perform_count):
 
     for day_num in WEEKDAYS:
         print "%s: " % calendar.day_name[day_num],
-        outputs = set(week[day_num].get_all_possible_outputs(2))
+        outputs = set(week[day_num].get_all_possible_days())
         pprint(outputs)
-        choice = choose(outputs)
-        print "Initial choice is %s, who has %d shifts already" % (choice, perform_count[choice])
-        while perform_count[choice] >= 1 and any((count == 0 for count in perform_count.itervalues())):
-            outputs = outputs - set([choice])
-            choice = choose(outputs)
-        print "Selected random output: %s" % choice
-        concrete_week[day_num] = choice
-        #week[(day_num+1) % 5].set_unavailable(choice, )
-        perform_count[choice] += 1
+        #choice = choose(outputs)
+        #print "Initial choice is %s, who has %d shifts already" % (choice, perform_count[choice])
+        #while perform_count[choice] >= 1 and any((count == 0 for count in perform_count.itervalues())):
+        #    outputs = outputs - set([choice])
+        #    choice = choose(outputs)
+        #print "Selected random output: %s" % choice
+        #concrete_week[day_num] = choice
+        ##week[(day_num+1) % 5].set_unavailable(choice, )
+        #perform_count[choice] += 1
 
     return concrete_week
 
@@ -82,12 +75,12 @@ def generate_theoretical_week(people):
     text_cal = calendar.TextCalendar()
     text_cal.setfirstweekday(calendar.SUNDAY)
     # First constraint: Michal and Shaked don't do weekends.
-    week = {day_num: Day(people) for day_num in text_cal.iterweekdays()}
+    week = {day_num: DayGenerator(people) for day_num in text_cal.iterweekdays()}
     pprint(week)
-    week[calendar.SUNDAY].set_unavailable("Michal", VERY_INCONVENIENT)
-    week[calendar.SUNDAY].set_unavailable("Shaked", VERY_INCONVENIENT)
-    week[calendar.THURSDAY].set_unavailable("Michal", IMPOSSIBLE)
-    week[calendar.THURSDAY].set_unavailable("Shaked", IMPOSSIBLE)
+    week[calendar.SUNDAY].set_unavailable("Michal", DayGenerator.VERY_INCONVENIENT)
+    week[calendar.SUNDAY].set_unavailable("Shaked", DayGenerator.VERY_INCONVENIENT)
+    week[calendar.THURSDAY].set_unavailable("Michal", DayGenerator.IMPOSSIBLE)
+    week[calendar.THURSDAY].set_unavailable("Shaked", DayGenerator.IMPOSSIBLE)
 
     return week
 
@@ -99,9 +92,9 @@ def main():
 
     concrete_week = generate_concrete_week(theoretical_week, perform_count)
     print
-    for day_num in WEEKDAYS:
-        print "%s: " % calendar.day_name[day_num],
-        print concrete_week[day_num]
+    #for day_num in WEEKDAYS:
+    #    print "%s: " % calendar.day_name[day_num],
+    #    print concrete_week[day_num]
     pprint(perform_count)
 
 
