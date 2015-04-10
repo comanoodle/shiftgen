@@ -19,20 +19,21 @@ def create_day_factory(day, people):
 
     assert day in WEEKDAYS
 
-    return DayFactory(people, static_constraints[day])
+    return DayFactory(people, calendar.day_name[day], static_constraints[day])
 
 
 class DayFactory(object):
-    def __init__(self, people, constraints=None):
+    def __init__(self, people, day, constraints=None):
         self.people = people
         self.constraints = constraints
+        self.day = day
         if constraints is None:
             self.constraints = []
 
     def add_constraint(self, constraint):
         self.constraints.append(constraint)
 
-    def next_possible_day(self):
+    def iterdays(self):
         for person in self.people:
             constraint_violations = []
             for constraint in self.constraints:
@@ -41,4 +42,7 @@ class DayFactory(object):
             yield Day(person=person, score=sum([violation.severity for violation in constraint_violations]))
 
     def get_all_possible_days(self):
-        return [day for day in self.next_possible_day()]
+        return [day for day in self.iterdays()]
+
+    def __repr__(self):
+        return "<%s for %s (id %s)>" % (self.__class__.__name__, self.day, id(self))
